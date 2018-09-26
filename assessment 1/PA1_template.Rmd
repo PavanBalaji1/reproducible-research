@@ -1,0 +1,138 @@
+# Course project 1
+
+## Getting the data
+
+### the data in the activity file is read using read.csv() function and stored in activity variable
+
+```{r Reading data}
+activity<-read.csv("activity.csv")
+```
+## Processsing data
+### The cleanData dataset is created from the original dataset.  
+ this data set has no NA values  
+
+```{r cleanData}
+activity$day<-weekdays(as.Date(activity$date))
+cleanData<-activity[!is.na(activity$steps),]
+```
+
+ the dataset with the NA values is also subsetted and stored in naData variable
+
+```{r naData}
+naData<-activity[is.na(activity$steps),]
+```
+
+## Total Number of steps per day
+
+ A new variable sumSteps is created by adding up the steps taken in each day.
+ 
+```{r}
+ sumSteps<-aggregate(cleanData$steps~cleanData$date,FUN=sum)
+ colnames(sumSteps)<-c("date","steps")
+```
+ 
+This is created from the cleaData dataset because the frist probelm need not involve the NA  
+variables  
+### Histogram for total number of steps perday
+
+```{r}
+hist(sumSteps$steps,breaks = 53,col = "grey",xlab = "Steps per Day",main = "Total Steps Per Day")
+```
+
+### Mean and median  
+The mean and the median of the total number of steps taken perday is calculated
+
+```{r}
+as.numeric(mean(sumSteps$steps))
+```
+```{r}
+as.numeric(median(sumSteps$steps))
+```
+### Time series plot
+
+The total number of steps per interval is first found out by aggregating.  
+It is stored in the intervalAgg variable
+```{r}
+intervalAgg<-aggregate(cleanData$steps~cleanData$interval,FUN = mean)
+colnames(intervalAgg)<-c("interval","steps")
+```
+
+```{r,echo = FALSE}
+intervalAgg$steps<-as.integer(intervalAgg$steps)
+```
+
+now the times series plot!!
+
+```{r}
+plot(intervalAgg$interval,intervalAgg$steps,type = "l",xlab = "Interval",ylab = "Steps Per Interval",main = "Average Number Of Steps Per Interval")
+```
+
+## The Interval that contains the maximim no of steps
+
+```{r}
+maxSteps<-max(intervalAgg$steps)
+intervalAgg[intervalAgg$steps==maxSteps,1]
+```
+
+## The maximum number of steps per Interval
+
+```{r}
+print(maxSteps)
+```
+ 
+## Imputing the missing values
+
+```{r}
+nrow(naData)
+```
+
+the total number of the missing rows is `r nrow(naData)`  
+
+
+### Creating a new average table including day
+```{r}
+newavg<-aggregate(cleanData$steps~cleanData$interval+cleanData$day,FUN = mean)
+colnames(newavg)<-c("interval","day","steps")
+newavg<-newavg[order(newavg$interval),]
+```
+### merge the nadata with the newaverage data
+```{r}
+newdata<-merge(naData,newavg,by=c("interval","day"))
+colnames(newdata)<-c("interval", "day", "steps", "date","Avg")
+```
+### Create a table identical to the original but the missing data filled
+```{r}
+newdata2<-newdata[,c(5,4,2,1)]
+colnames(newdata2)<-c("steps","date","interval","day")
+
+mergedata<-rbind(cleanData,newdata2)
+
+
+```
+### Create a new histogram
+ 
+```{r}
+ sumSteps2<-aggregate(mergedata$steps~mergedata$date,FUN=sum)
+ colnames(sumSteps2)<-c("date","steps")
+ 
+ as.numeric(mean(sumSteps2$steps))
+ as.numeric(mean(sumSteps$steps))
+ 
+ hist(sumSteps2$steps, breaks=5, xlab="Steps", main = "Total Steps per Day with NAs Fixed", col="Black")
+hist(sumSteps$steps, breaks=5, xlab="Steps", main = "Total Steps per Day with NAs Fixed", col="Grey", add=T)
+legend("topright", c("Imputed Data", "Non-NA Data"), fill=c("black", "grey") )
+```
+
+## Find if there is a change in the pattern
+Create a new factor variable in the dataset with two levels - "weekday" and "weekend" indicating   whether a given date is a weekday or weekend day.
+
+```{r}
+
+mergedata$DayCategory <- ifelse(mergedata$day %in% c("Saturday", "Sunday"), "Weekend", "Weekday")
+intervalTable<-aggregate(mergedata$steps~mergedata$interval+mergedata$DayCategory,FUN=mean)
+colnames(intervalTable)<-c("interval","Datcat","steps")
+plot(factor(intervalTable$Datcat),intervalTable$steps)
+```
+
+As you can see in the box plot there is a clear significant change in pattern in the weekends
+
